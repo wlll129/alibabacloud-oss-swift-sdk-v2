@@ -1,0 +1,26 @@
+# Mac OS X filesystem metadata
+.DS_Store
+
+# Xcode user artifacts
+xcuserdata/
+project.xcworkspace
+/Packages
+.xcode
+/*.xcodeproj
+DerivedData
+
+# AppCode artifacts
+.idea/
+
+# VSCode artifacts
+.vscode/
+
+.build
+.index-build
+.configuration
+
+*.swp
+*.orig
+.arcconfig
+.swiftpm/
+Package.resolved
