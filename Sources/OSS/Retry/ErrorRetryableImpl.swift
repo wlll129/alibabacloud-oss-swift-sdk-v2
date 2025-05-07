@@ -4,6 +4,8 @@ public struct ServiceErrorRetryable: ErrorRetryable {
     static let statusCodes: [Int] = [401, 408, 429]
     static let errorCodes: [String] = ["RequestTimeTooSkewed", "BadRequest"]
     static let errorMessages: [String] = ["Invalid signing date in Authorization header."]
+    
+    public init() { }
 
     public func isErrorRetryable(error: Error) -> Bool {
         if let error = error as? ServerError {
@@ -33,6 +35,9 @@ public struct ClientErrorRetryable: ErrorRetryable {
         "RemoteSignatureError",
         "ResponseError",
     ]
+    
+    public init() { }
+
     public func isErrorRetryable(error: Error) -> Bool {
         if let error = error as? ClientError {
             if Self.errorCodes.contains(error.code) {

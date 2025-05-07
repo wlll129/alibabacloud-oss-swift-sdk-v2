@@ -1,7 +1,7 @@
 
 import Foundation
 
-struct StandardRetryer: Retryer {
+public struct StandardRetryer: Retryer {
     private let maxAttempt: Int
     private let backoff: Backoff
     private let errorRetryable: [ErrorRetryable]
@@ -21,11 +21,11 @@ struct StandardRetryer: Retryer {
             [ServiceErrorRetryable(), ClientErrorRetryable()]
     }
 
-    func maxAttempts() -> Int {
+    public func maxAttempts() -> Int {
         return maxAttempt
     }
 
-    func isErrorRetryable(error: Error) -> Bool {
+    public func isErrorRetryable(error: Error) -> Bool {
         for retryable in errorRetryable {
             if retryable.isErrorRetryable(error: error) {
                 return true
@@ -34,7 +34,7 @@ struct StandardRetryer: Retryer {
         return false
     }
 
-    func retryDelay(attempt: Int, error: Error) -> TimeInterval {
+    public func retryDelay(attempt: Int, error: Error) -> TimeInterval {
         return backoff.backoffDelay(attempt: attempt, error: error)
     }
 }
