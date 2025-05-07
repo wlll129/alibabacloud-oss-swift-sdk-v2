@@ -12,7 +12,8 @@ let targets = ["AbortMultipartUpload", "AppendObject",
                "ListBuckets", "ListMultipartUploads", "ListObjects", "ListObjectsV2", "ListObjectVersions", "ListParts",
                "PutBucket", "PutBucketAcl", "PutBucketVersioning", "PutObject", "PutObjectACL", "PutObjectTagging", "PutSymlink",
                "RestoreObject",
-               "UploadPart", "UploadPartCopy"]
+               "UploadPart", "UploadPartCopy",
+               "Presign"]
 
 let package = Package(
     name: "alibabacloud-oss-samples",
