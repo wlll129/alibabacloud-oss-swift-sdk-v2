@@ -1,15 +1,18 @@
 import Foundation
 
-struct NopRetryer: Retryer {
-    func maxAttempts() -> Int {
+public struct NopRetryer: Retryer {
+    
+    public init() { }
+    
+    public func maxAttempts() -> Int {
         return 1
     }
 
-    func isErrorRetryable(error _: Error) -> Bool {
+    public func isErrorRetryable(error _: Error) -> Bool {
         return false
     }
 
-    func retryDelay(attempt _: Int, error _: Error) -> TimeInterval {
+    public func retryDelay(attempt _: Int, error _: Error) -> TimeInterval {
         return TimeInterval(0)
     }
 }
