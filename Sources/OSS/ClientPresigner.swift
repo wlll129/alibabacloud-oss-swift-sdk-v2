@@ -113,7 +113,7 @@ public extension Client {
     ) async throws -> PresignResult {
         var input = OperationInput(
             operationName: "InitiateMultipartUpload",
-            method: "PUT",
+            method: "POST",
             parameters: [
                 "uploads": "",
             ]
