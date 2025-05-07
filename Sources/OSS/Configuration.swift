@@ -11,22 +11,22 @@ public class Configuration {
     public var region: String?
 
     /// Max retry count, default value is 3
-    public var retryMaxAttempts: Int = 3
+    public var retryMaxAttempts: Int?
 
     /// Maximum connections per host
     public var maxConnectionsPerHost: Int?
 
     /// Flag of enabling background file transmit service., default value is `false`
-    public var enableBackgroundTransmitService: Bool = false
+    public var enableBackgroundTransmitService: Bool?
 
     /// Sets the session Id for background file transmission
     public var backgroundSesseionIdentifier: String?
 
     /// Sets request timeout, default value is 15s
-    public var timeoutIntervalForRequest: TimeInterval = 15
+    public var timeoutIntervalForRequest: TimeInterval?
 
     /// Sets single object's max time, default value is 24h
-    public var timeoutIntervalForResource: TimeInterval = 24 * 60 * 60
+    public var timeoutIntervalForResource: TimeInterval?
 
     /// Sets the user specific identifier appended to the User-Agent header.
     public var userAgent: String?
@@ -43,7 +43,7 @@ public class Configuration {
     public var enableDownloadCRC64Validation: Bool?
 
     /// Disable Https protocol on request. Defaut value is false
-    public var httpProtocal: HttpProtocal = .https
+    public var httpProtocal: HttpProtocal?
 
     /// Skip certificate check. Defaut value is false
     public var enableTLSVerify: Bool?
@@ -58,7 +58,7 @@ public class Configuration {
     public var useCname: Bool?
 
     /// Authentication with OSS Signature Version, Defaults is "v4"
-    public var signerVersion: SignerVersion = .v4
+    public var signerVersion: SignerVersion?
 
     /// Dual-stack endpoints are provided in some regions.
     /// This allows an IPv4 client and an IPv6 client to access a bucket by using the same endpoint.
@@ -74,6 +74,9 @@ public class Configuration {
     /// uploads and downloads across countries and regions.
     /// Set this to `true` to use a accelerate endpoint for the requests.
     public var useAccelerateEndpoint: Bool?
+    
+    /// Additional signable headers.
+    public var additionalHeaders: [String]?
 
     /// oss log agent
     public var logger: LogAgent?
@@ -153,6 +156,15 @@ public extension Configuration {
     @discardableResult
     func withTimeoutIntervalForRequest(_ timeoutIntervalForRequest: TimeInterval) -> Self {
         self.timeoutIntervalForRequest = timeoutIntervalForRequest
+        return self
+    }
+    
+    /// Sets single object's max time.
+    /// - Parameter timeoutIntervalForResource: timeoutIntervalForRequest
+    /// - Returns: self
+    @discardableResult
+    func withTimeoutIntervalForResource(_ timeoutIntervalForResource: TimeInterval) -> Self {
+        self.timeoutIntervalForResource = timeoutIntervalForResource
         return self
     }
 
@@ -273,6 +285,14 @@ public extension Configuration {
         return self
     }
 
+    /// Set additional signable headers.
+    /// - Parameter additionalHeaders: Additional signable headers
+    /// - Returns: self
+    @discardableResult
+    func withAdditionalHeaders(_ additionalHeaders: [String]) -> Self {
+        self.additionalHeaders = additionalHeaders
+        return self
+    }
     /// Set up logger
     /// - Parameter logger: logger
     /// - Returns: self

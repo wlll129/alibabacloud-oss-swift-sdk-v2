@@ -766,6 +766,53 @@ final class ClientMockTests: XCTestCase {
             XCTAssertEqual(error?.message.prefix(19), "crc is inconsistent")
         }
     }
+    
+    func testUserAgent() async throws {
+        var config = Configuration.default()
+            .withRegion("cn-hangzhou")
+            .withCredentialsProvider(AnonymousCredentialsProvider())
+            .withUserAgent("userAgent")
+        
+        // consistent
+        let mock = MockProcessRequest { request, _ in
+            ResponseMessage(statusCode: 200,
+                            headers: request.headers)
+        }
+        var client = Client(config) { $0.executeMW = mock }
+        let request = GetObjectRequest(bucket: "bucket",
+                                       key: "key")
+        var result = try await client.getObject(request)
+        XCTAssertEqual("userAgent", result.headers?[caseInsensitive: "user-agent"]?.suffix(9))
+        
+        
+        config = Configuration.default()
+            .withRegion("cn-hangzhou")
+            .withCredentialsProvider(AnonymousCredentialsProvider())
+        client = Client(config) { $0.executeMW = mock }
+        result = try await client.getObject(request)
+        XCTAssertNotNil(result.headers?[caseInsensitive: "user-agent"])
+    }
+    
+    func testCname() async throws {
+        let config = Configuration.default()
+            .withRegion("cn-hangzhou")
+            .withEndpoint("www.cname.com")
+            .withAdditionalHeaders(["additionalKey"])
+            .withCredentialsProvider(EnvironmentCredentialsProvider())
+        
+        // consistent
+        let mock = MockProcessRequest { request, context in
+            return ResponseMessage(statusCode: 200,
+                                   headers: request.headers)
+        }
+        let client = Client(config) { $0.executeMW = mock }
+        var request = GetObjectRequest(bucket: "bucket",
+                                       key: "key")
+        request.commonProp.headers = ["additionalKey": "additionalValue"]
+        let result = try await client.getObject(request)
+        XCTAssertEqual("additionalValue", result.headers?[caseInsensitive: "additionalKey"])
+        XCTAssertTrue(result.headers?[caseInsensitive: "Authorization"]?.contains("AdditionalHeaders=additionalkey") ?? false)
+    }
 }
 
 private class MockSendRequest: ExecuteMiddleware {
