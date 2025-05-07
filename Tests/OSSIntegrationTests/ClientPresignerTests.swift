@@ -26,6 +26,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (_, response) = try await URLSession.shared.upload(for: urlRequest, from: data)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 200)
 
@@ -41,6 +44,7 @@ class ClientPresignerTests: BaseTestCase {
         try await createBucket(client: client, bucket: bucket)
         let putRequest = PutObjectRequest(bucket: bucket,
                                           key: key,
+                                          metadata: ["user" : "jack"],
                                           body: .data(content))
         try await assertNoThrow(await client.putObject(putRequest))
 
@@ -56,6 +60,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 200)
         XCTAssertEqual(data.base64EncodedString(), data.base64EncodedString())
@@ -87,6 +94,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (_, response) = try await URLSession.shared.data(for: urlRequest)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 200)
 
@@ -113,6 +123,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (_, response) = try await URLSession.shared.data(for: urlRequest)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 200)
 
@@ -146,6 +159,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (_, response) = try await URLSession.shared.upload(for: urlRequest, from: data)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 200)
 
@@ -186,7 +202,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
-        urlRequest.addValue("yes", forHTTPHeaderField: "x-oss-complete-all")
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (_, response) = try await URLSession.shared.data(for: urlRequest)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 200)
 
@@ -226,6 +244,9 @@ class ClientPresignerTests: BaseTestCase {
 
         var urlRequest = URLRequest(url: URL(string: result.url)!)
         urlRequest.httpMethod = result.method
+        for (key, value) in result.signedHeaders ?? [:] {
+            urlRequest.setValue(value, forHTTPHeaderField: key)
+        }
         let (_, response) = try await URLSession.shared.data(for: urlRequest)
         XCTAssertEqual((response as! HTTPURLResponse).statusCode, 204)
 

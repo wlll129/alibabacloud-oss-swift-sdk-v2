@@ -21,6 +21,7 @@ public class ClientOptions {
 
     public var featureFlags: FeatureFlag
 
+    public var additionalHeaders: [String] = []
     /// The middleware to send request, use for test
     var executeMW: ExecuteMiddleware?
 
