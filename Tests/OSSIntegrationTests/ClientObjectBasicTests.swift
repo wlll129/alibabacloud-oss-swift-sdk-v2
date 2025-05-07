@@ -401,7 +401,7 @@ final class ClientObjectBasicTests: BaseTestCase {
                                       key: objectKey)
         try await assertThrowsAsyncError(await client?.getObjectToFile(getRequest, downloadFile))
 
-        downloadFile = URL(filePath: tempDir + pathSeparator + "file")
+        downloadFile = URL(fileURLWithPath: tempDir + pathSeparator + "file")
         let directory = downloadFile.deletingLastPathComponent().absoluteString.replacingOccurrences(of: "file://", with: "")
         if !FileManager.default.fileExists(atPath: directory) {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
@@ -533,7 +533,7 @@ final class ClientObjectBasicTests: BaseTestCase {
     @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
     func testGetObjectAndCheckCRCWithFile() async throws {
         let objectKey = randomObjectName()
-        let filePath = URL(filePath: tempDir + pathSeparator + "file")
+        let filePath = URL(fileURLWithPath: tempDir + pathSeparator + "file")
         let data = "hello oss".data(using: .utf8)!
 
         let credentialsProvider = StaticCredentialsProvider(accessKeyId: accessKeyId, accessKeySecret: accessKeySecret)

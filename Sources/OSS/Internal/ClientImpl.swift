@@ -104,7 +104,7 @@ class ClientImpl {
             product: product,
             region: region,
             endpoint: endpoint,
-            retryMaxAttempts: config.retryMaxAttempts,
+            retryMaxAttempts: config.retryMaxAttempts ?? Defaults.maxAttempt,
             retryer: retryer,
             signer: signer,
             credentialsProvider: config.credentialsProvider,
@@ -112,6 +112,7 @@ class ClientImpl {
             authMethod: nil,
             featureFlags: featureFlags
         )
+        opts.additionalHeaders = config.additionalHeaders ?? opts.additionalHeaders
 
         return opts
     }
@@ -140,7 +141,7 @@ class ClientImpl {
         }
 
         if !endpoint.contains("://") {
-            endpoint = config.httpProtocal.rawValue + "://" + endpoint
+            endpoint = (config.httpProtocal?.rawValue ?? Defaults.httpProtocal) + "://" + endpoint
         }
         return URL(string: endpoint)
     }
@@ -164,19 +165,19 @@ class ClientImpl {
     static func resolveURLSession(_ config: Configuration) -> (URLSession, Bool) {
         let owner = true
 
-        let delegate = OSSURLSessionDelegate(enableTLSVerify: config.enableTLSVerify ?? false,
+        let delegate = OSSURLSessionDelegate(enableTLSVerify: config.enableTLSVerify ?? true,
                                              enableFollowRedirect: config.enableFollowRedirect ?? false)
         let delegateQueue = OperationQueue()
         var sessionConfig: URLSessionConfiguration
         sessionConfig = .default
         #if !(os(Linux) || os(Windows))
-            if config.enableBackgroundTransmitService {
+            if config.enableBackgroundTransmitService ?? false {
                 let identifier = config.backgroundSesseionIdentifier ?? Defaults.backgroundSesseionIdentifier
                 sessionConfig = .background(withIdentifier: identifier)
             }
         #endif
-        sessionConfig.timeoutIntervalForRequest = config.timeoutIntervalForRequest
-        sessionConfig.timeoutIntervalForResource = config.timeoutIntervalForResource
+        sessionConfig.timeoutIntervalForRequest = config.timeoutIntervalForRequest ?? Defaults.timeoutIntervalForRequest
+        sessionConfig.timeoutIntervalForResource = config.timeoutIntervalForResource ?? Defaults.timeoutIntervalForResource
         sessionConfig.requestCachePolicy = .reloadIgnoringLocalCacheData
         if let maximumConnectionsPerHost = config.maxConnectionsPerHost {
             sessionConfig.httpMaximumConnectionsPerHost = maximumConnectionsPerHost
@@ -314,7 +315,8 @@ class ClientImpl {
         var signedHeaders: [String: String] = [:]
         for (k, v) in req.headers {
             let lowkey = k.lowercased()
-            if expect.contains(lowkey) {
+            if expect.contains(lowkey) ||
+                lowkey.hasPrefix("x-oss-") {
                 signedHeaders[lowkey] = v
             }
         }
@@ -345,7 +347,8 @@ class ClientImpl {
             bucket: input.bucket,
             key: input.key,
             region: options.region,
-            product: options.product
+            product: options.product,
+            additionalHeaderNames: options.additionalHeaders
         )
 
         // signing time from user
