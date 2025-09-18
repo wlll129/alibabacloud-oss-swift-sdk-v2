@@ -11,6 +11,9 @@ class ClientExtensionsTests: BaseTestCase {
 
         let document = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first
         let file = URL(fileURLWithPath: "\(document!)/file1")
+        if !FileManager.default.fileExists(atPath: document!, isDirectory: nil) {
+            try FileManager.default.createDirectory(atPath: document!, withIntermediateDirectories: true)
+        }
         if FileManager.default.fileExists(atPath: file.absoluteString.replacingOccurrences(of: "file://", with: "")) {
             try FileManager.default.removeItem(at: file)
         }

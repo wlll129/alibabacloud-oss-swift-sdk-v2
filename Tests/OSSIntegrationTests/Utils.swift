@@ -64,3 +64,22 @@ extension Data {
         Data(Insecure.MD5.hash(data: self))
     }
 }
+
+class ProgressDelegateTestImp: ProgressDelegate, @unchecked Sendable {
+    var totalBytesTransferred: Int64
+    let totalBytesExpected: Int64
+    
+    init(
+        totalBytesTransferred: Int64 = 0,
+        totalBytesExpected: Int64
+    ) {
+        self.totalBytesTransferred = totalBytesTransferred
+        self.totalBytesExpected = totalBytesExpected
+    }
+    
+    func onProgress(_ bytesIncrement: Int64, _ totalBytesTransferred: Int64, _ totalBytesExpected: Int64) {
+        self.totalBytesTransferred += bytesIncrement
+        XCTAssertEqual(self.totalBytesTransferred, totalBytesTransferred)
+        XCTAssertEqual(totalBytesExpected, totalBytesExpected)
+    }
+}

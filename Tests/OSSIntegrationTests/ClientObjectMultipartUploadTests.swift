@@ -287,12 +287,12 @@ final class ClientObjectMultipartUploadTests: BaseTestCase {
 
         removeTestFile(filePath)
     }
-
+    
     func testUploadPartWithProgress() async throws {
         let objectKey = randomObjectName()
         let size = 5 * 1024 * 1024
         let file = URL(fileURLWithPath: createTestFile(randomFileName(), size)!)
-        let totalBytesSented = ValueActor(value: 0)
+        let progress = ProgressDelegateTestImp(totalBytesExpected: Int64(size))
 
         let initReqesut = InitiateMultipartUploadRequest(bucket: bucketName, key: objectKey)
         let initResult = try await client?.initiateMultipartUpload(initReqesut)
@@ -304,18 +304,10 @@ final class ClientObjectMultipartUploadTests: BaseTestCase {
                                         partNumber: 1,
                                         uploadId: initResult!.uploadId,
                                         body: .file(file))
-        request.progress = ProgressClosure { bytesSent, totalBytesSent, totalBytesExpectedToSend in
-            Task {
-                await totalBytesSented.setValue(value: totalBytesSented.getValue() + Int(bytesSent))
-                let value = await totalBytesSented.getValue()
-                XCTAssertEqual(value, Int(totalBytesSent))
-                XCTAssertEqual(Int(totalBytesExpectedToSend), size)
-            }
-        }
+        request.progress = progress
         let result = try await client?.uploadPart(request)
         XCTAssertEqual(result?.statusCode, 200)
-        let value = await totalBytesSented.getValue()
-        XCTAssertEqual(value, Int(size))
+        XCTAssertEqual(progress.totalBytesTransferred, Int64(size))
 
         let deleteReqeust = DeleteObjectRequest(bucket: bucketName, key: objectKey)
         let _ = try await client?.deleteObject(deleteReqeust)

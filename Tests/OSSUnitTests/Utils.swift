@@ -154,24 +154,45 @@ func assertNoThrow<T>(
     }
 }
 
-actor ValueActor {
-    private var value = 0
+actor ValueActor<T: Sendable> {
+    private let sharedActorsExecutor = SerialExecutorImp()
+    private var value: T
 
-    func setValue(value: Int) {
+    init(value: T) {
         self.value = value
     }
 
-    func increment() {
-        value += 1
+    func setValue(value: T) {
+        self.value = value
     }
 
-    func getV() -> Int {
+    func getValue() -> T {
         return value
+    }
+    
+    nonisolated var unownedExecutor: UnownedSerialExecutor {
+        sharedActorsExecutor.asUnownedSerialExecutor()
     }
 }
 
 extension Data {
     func toBase64String() -> String {
         return base64EncodedString(options: .lineLength64Characters)
+    }
+}
+
+final class SerialExecutorImp: SerialExecutor {
+    
+    private let queue: DispatchQueue = DispatchQueue(label: "test_serial_executor")
+    
+    func enqueue(_ job: UnownedJob) {
+        let unownedExecutor = asUnownedSerialExecutor()
+        queue.async {
+            job.runSynchronously(on: unownedExecutor)
+        }
+    }
+    
+    func asUnownedSerialExecutor() -> UnownedSerialExecutor {
+        UnownedSerialExecutor(ordinary: self)
     }
 }

@@ -124,22 +124,14 @@ final class ClientObjectBasicTests: BaseTestCase {
         let size = 300 * 1024 + 12345
         let data = randomStr(size).data(using: .utf8)!
         let objectKey = randomObjectName()
-        let totalBytesSented = ValueActor(value: 0)
+        let progress = ProgressDelegateTestImp(totalBytesExpected: Int64(size))
         var request = PutObjectRequest(bucket: bucketName,
                                        key: objectKey,
                                        body: .data(data))
-        request.progress = ProgressClosure { bytesSent, totalBytesSent, totalBytesExpectedToSend in
-            Task {
-                await totalBytesSented.setValue(value: totalBytesSented.getValue() + Int(bytesSent))
-                let value = await totalBytesSented.getValue()
-                XCTAssertEqual(value, Int(totalBytesSent))
-                XCTAssertEqual(Int(totalBytesExpectedToSend), size)
-            }
-        }
+        request.progress = progress
         let result = try await client?.putObject(request)
         XCTAssertEqual(result?.statusCode, 200)
-        let value = await totalBytesSented.getValue()
-        XCTAssertEqual(value, Int(size))
+        XCTAssertEqual(progress.totalBytesTransferred, Int64(size))
     }
 
     func testPutObjectWithHeader() async throws {
@@ -1255,26 +1247,18 @@ final class ClientObjectBasicTests: BaseTestCase {
         let objectKey = randomObjectName()
         let size = 5 * 1024 * 1024
         let file = URL(fileURLWithPath: createTestFile(randomFileName(), size)!)
-        let totalBytesSented = ValueActor(value: 0)
+        let progress = ProgressDelegateTestImp(totalBytesExpected: Int64(size))
 
         var request = AppendObjectRequest(bucket: bucketName,
                                           key: objectKey,
                                           position: 0,
                                           body: .file(file))
-        request.progress = ProgressClosure { bytesSent, totalBytesSent, totalBytesExpectedToSend in
-            Task {
-                await totalBytesSented.setValue(value: totalBytesSented.getValue() + Int(bytesSent))
-                let value = await totalBytesSented.getValue()
-                XCTAssertEqual(value, Int(totalBytesSent))
-                XCTAssertEqual(Int(totalBytesExpectedToSend), size)
-            }
-        }
+        request.progress = progress
         let result = try await client?.appendObject(request)
         XCTAssertEqual(result?.statusCode, 200)
         XCTAssertNotNil(result?.nextAppendPosition)
         XCTAssertNotNil(result?.hashCrc64ecma)
-        let value = await totalBytesSented.getValue()
-        XCTAssertEqual(value, Int(size))
+        XCTAssertEqual(progress.totalBytesTransferred, Int64(size))
 
         let deleteReqeust = DeleteObjectRequest(bucket: bucketName, key: objectKey)
         let _ = try await client?.deleteObject(deleteReqeust)
@@ -1345,9 +1329,9 @@ final class ClientObjectBasicTests: BaseTestCase {
 
     func testAppendObjectWithCrc() async throws {
         let objectKey = randomObjectName()
-        let file = FileName.middle.fileUrl()
-        let data = try Data(contentsOf: file)
         let size = 256 * 1024
+        let file = URL(fileURLWithPath: createTestFile(randomFileName(), size)!)
+        let data = try Data(contentsOf: file)
         var uploadedSize = 0
         var crcValue: UInt64 = 0
 
@@ -1459,12 +1443,12 @@ final class ClientObjectBasicTests: BaseTestCase {
         }
     }
 
-    func testDeleteMultipleObjectsWithQuiet() async throws {
+    func testDeleteMultipleObjectsWithQuietIsTrue() async throws {
         let objectKey = randomObjectName()
-        var objects = ArrayActor<DeleteObject>()
+        let objects = ArrayActor<DeleteObject>()
         let client = self.client!
         let bucket = bucketName
-
+        
         // quiet = true
         await withThrowingTaskGroup(of: Void.self) {
             for i in 0 ..< 10 {
@@ -1479,22 +1463,27 @@ final class ClientObjectBasicTests: BaseTestCase {
                 }
             }
         }
-
+        
         var request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
         request.quiet = true
-        var result = try await client.deleteMultipleObjects(request)
+        let result = try await client.deleteMultipleObjects(request)
         XCTAssertEqual(result.statusCode, 200)
         XCTAssertNil(result.deletedObjects)
-
+        
         for object in await objects.elements {
             try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
                 let serverError = $0 as? ServerError
                 XCTAssertEqual(serverError?.statusCode, 404)
             }
         }
-
-        // quiet = false
-        objects = ArrayActor<DeleteObject>()
+    }
+    
+    func testDeleteMultipleObjectsWithQuietIsFalse() async throws {
+        let objectKey = randomObjectName()
+        let objects = ArrayActor<DeleteObject>()
+        let client = self.client!
+        let bucket = bucketName
+        
         await withThrowingTaskGroup(of: Void.self) {
             for i in 0 ..< 10 {
                 $0.addTask {
@@ -1508,10 +1497,10 @@ final class ClientObjectBasicTests: BaseTestCase {
                 }
             }
         }
-
-        request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
+        
+        var request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
         request.quiet = false
-        result = try await client.deleteMultipleObjects(request)
+        let result = try await client.deleteMultipleObjects(request)
         XCTAssertEqual(result.statusCode, 200)
         XCTAssertNotNil(result.deletedObjects)
         for object in await objects.elements {
@@ -1519,16 +1508,21 @@ final class ClientObjectBasicTests: BaseTestCase {
                 deletedObject.key == object.key
             }))
         }
-
+        
         for object in await objects.elements {
             try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
                 let serverError = $0 as? ServerError
                 XCTAssertEqual(serverError?.statusCode, 404)
             }
         }
+    }
+    
+    func testDeleteMultipleObjectsWithQuietIsNil() async throws {
+        let objectKey = randomObjectName()
+        let objects = ArrayActor<DeleteObject>()
+        let client = self.client!
+        let bucket = bucketName
 
-        // quiet is nil
-        objects = ArrayActor<DeleteObject>()
         await withThrowingTaskGroup(of: Void.self) {
             for i in 0 ..< 10 {
                 $0.addTask {
@@ -1543,9 +1537,8 @@ final class ClientObjectBasicTests: BaseTestCase {
             }
         }
 
-        request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
-        request.quiet = false
-        result = try await client.deleteMultipleObjects(request)
+        let request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
+        let result = try await client.deleteMultipleObjects(request)
         XCTAssertEqual(result.statusCode, 200)
         XCTAssertNotNil(result.deletedObjects)
         for object in await objects.elements {

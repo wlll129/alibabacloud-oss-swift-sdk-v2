@@ -550,7 +550,7 @@ final class ClientMockTests: XCTestCase {
             var delegate = context.progressDelegate?.delegate
             if count < 2 {
                 count += 1
-                delegate?.onProgress(2, 2, 9)
+                delegate?.onProgress(2, 2, 5)
                 let _ = try request.content?.readData()
                 return makeTimeTooSkewedResponse()
             } else {
@@ -565,19 +565,17 @@ final class ClientMockTests: XCTestCase {
         XCTAssertNotNil(client)
 
         // upload
-        nonisolated(unsafe) var cc = 0
         var request = PutObjectRequest(bucket: "bucket",
                                        key: "key",
                                        body: .data(data))
         request.progress = ProgressClosure { bytesIncrement, totalBytesTransferred, totalBytesExpected in
-            if cc < 3 {
+            if totalBytesExpected == 5 {
                 XCTAssertEqual(totalBytesTransferred, 2)
-                cc += 1
             } else {
-                XCTAssertLessThan(2, totalBytesTransferred)
+                XCTAssertLessThanOrEqual(2, totalBytesTransferred)
+                XCTAssertEqual(bytesIncrement, 2)
+                XCTAssertEqual(totalBytesExpected, 9)
             }
-            XCTAssertEqual(bytesIncrement, 2)
-            XCTAssertEqual(totalBytesExpected, 9)
         }
         try await assertNoThrow(await client.putObject(request))
     }

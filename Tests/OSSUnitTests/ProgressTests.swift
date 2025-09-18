@@ -2,11 +2,14 @@
 import XCTest
 
 class ProgressTests: XCTestCase {
-    func testProgressWithRetry() {
-        nonisolated(unsafe) var ltotalBytesTransferred: Int64 = 0
+    func testProgressWithRetry() async {
+        let ltotalBytesTransferred = ValueActor<Int64>(value: 0)
         let progress = ProgressClosure { _, totalBytesTransferred, _ in
-            XCTAssertLessThanOrEqual(ltotalBytesTransferred, totalBytesTransferred)
-            ltotalBytesTransferred = totalBytesTransferred
+            Task {
+                let value = await ltotalBytesTransferred.getValue()
+                XCTAssertLessThanOrEqual(value, totalBytesTransferred)
+                await ltotalBytesTransferred.setValue(value: totalBytesTransferred)
+            }
         }
 
         var prog = ProgressWithRetry(progress)

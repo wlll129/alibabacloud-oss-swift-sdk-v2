@@ -160,7 +160,7 @@ final class SignerV1Tests: XCTestCase {
     }
 }
 
-extension [URLQueryItem]: @retroactive ExpressibleByDictionaryLiteral {
+extension [URLQueryItem] {
     public typealias Key = String
     public typealias Value = String?
 
