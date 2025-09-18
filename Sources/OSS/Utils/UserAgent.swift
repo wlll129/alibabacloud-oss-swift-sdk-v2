@@ -39,7 +39,7 @@ extension UserAgent {
     }
 }
 
-extension OperatingSystemVersion: @retroactive CustomStringConvertible {
+extension OperatingSystemVersion {
     public var description: String {
         var osVersion = "\(majorVersion).\(minorVersion)"
         if patchVersion > 0 {

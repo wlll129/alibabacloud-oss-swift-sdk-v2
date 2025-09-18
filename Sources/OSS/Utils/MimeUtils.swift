@@ -6,8 +6,9 @@ import Foundation
     import MobileCoreServices
 #endif
 
-public enum MimeUtils {
-    public nonisolated(unsafe) static var userMappings: [String: String] = [:]
+public struct MimeUtils: Sendable {
+    private static let instance = MimeUtils()
+    private var userMappings: [String: String] = [:]
 
     static func getExtension(_ fileName: String) -> String? {
         for (index, char) in fileName.enumerated().reversed() {
@@ -36,7 +37,7 @@ public enum MimeUtils {
 
     public static func getMimeType(_ pathExtension: String, _ defaultMimeType: String? = nil) -> String? {
         /// try to get mime type from user map
-        if let value = userMappings[pathExtension] {
+        if let value = instance.userMappings[pathExtension] {
             return value
         }
 

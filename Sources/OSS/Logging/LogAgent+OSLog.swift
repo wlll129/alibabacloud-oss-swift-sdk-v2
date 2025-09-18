@@ -1,6 +1,6 @@
 import Foundation
 #if canImport(os)
-    import os
+    @preconcurrency import os
 
     public struct LogAgentOSLog: LogAgent {
         private let logger = OSLog(subsystem: SdkInfo.sdkName, category: "main")
