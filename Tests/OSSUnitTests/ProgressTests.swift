@@ -5,7 +5,7 @@ class ProgressTests: XCTestCase {
     func testProgressWithRetry() async {
         let ltotalBytesTransferred = ValueActor<Int64>(value: 0)
         let progress = ProgressClosure { _, totalBytesTransferred, _ in
-            Task {
+            Task { @MainActor in
                 let value = await ltotalBytesTransferred.getValue()
                 XCTAssertLessThanOrEqual(value, totalBytesTransferred)
                 await ltotalBytesTransferred.setValue(value: totalBytesTransferred)
