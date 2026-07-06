@@ -1009,3 +1009,5 @@ public struct CleanRestoredObjectRequest: RequestModel {
 public struct CleanRestoredObjectResult: ResultModel {
     public var commonProp: ResultModelProp = .init()
 }
+
+extension PutObjectResult: Sendable {}

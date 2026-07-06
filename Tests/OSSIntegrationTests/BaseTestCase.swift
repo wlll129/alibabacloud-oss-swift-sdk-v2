@@ -281,7 +281,12 @@ public class BaseTestCase: XCTestCase {
     func createTestFile(_ fileName: String, _ size: Int) -> String? {
         do {
             let path = "\(tempDir)\(pathSeparator)\(fileName)"
-            try FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: false, attributes: nil)
+            if !FileManager.default.fileExists(atPath: tempDir) {
+                try FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: false, attributes: nil)
+            }
+            if FileManager.default.fileExists(atPath: path) {
+                try FileManager.default.removeItem(atPath: path)
+            }
             let contents = randomStr(size).data(using: .utf8)
             if FileManager.default.createFile(atPath: path, contents: contents, attributes: nil) {
                 return path
@@ -295,6 +300,51 @@ public class BaseTestCase: XCTestCase {
 
     func removeTestFile(_ location: String) {
         try? FileManager.default.removeItem(atPath: location)
+    }
+    
+    func isEqual(client: Client, bucket: String, key: String, localFile: String) async throws {
+        let headResult = try await client.headObject(
+            HeadObjectRequest(
+                bucket: bucket,
+                key: key
+            )
+        )
+        if let md5 = headResult.contentMd5 {
+            let localMD5 = try Utils.calculateMd5(fileURL: URL(fileURLWithPath: localFile))
+            XCTAssertEqual(md5, localMD5.base64EncodedString())
+        }
+        
+        let file = "\(tempDir)\(pathSeparator)" + randomFileName()
+        let fileUrl = URL(fileURLWithPath: file)
+        let presign = try await client.presign(GetObjectRequest(
+            bucket: bucket,
+            key: key
+        ))
+        let (url, response): (URL, URLResponse) = try await withCheckedThrowingContinuation { continuation in
+            URLSession.shared.downloadTask(with: URLRequest(url: URL(string: presign.url)!)) {
+                if let error = $2 {
+                    continuation.resume(with: .failure(error))
+                } else if let url = $0,
+                          let resp = $1 {
+                    continuation.resume(with: .success((url, resp)))
+                } else {
+                    continuation.resume(with: .failure(ClientError.responseError(detail: "Failed to obtain url or response")))
+                }
+            }.resume()
+        }
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        if FileManager.default.fileExists(atPath: file) {
+            try FileManager.default.removeItem(at: fileUrl)
+        }
+        try FileManager.default.moveItem(
+            at: url,
+            to: fileUrl
+        )
+        XCTAssertEqual(
+            try Utils.calculateMd5(fileURL: fileUrl),
+            try Utils.calculateMd5(fileURL: URL(fileURLWithPath: localFile))
+        )
+        removeTestFile(file)
     }
 }
 

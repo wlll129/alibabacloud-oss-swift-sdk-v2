@@ -12,6 +12,19 @@ public enum Defaults {
     
     public static let httpProtocal = "https"
 
+    public static let backgroundSesseionIdentifier = "com.aliyun.oss.backgroundsession"
+    
+    public static let maxUploadParts = 10000
+
+    public static let partSize: Int = 6 * 1024 * 1024
+    public static let uploadPartSize = partSize
+
+    public static let parallel: Int = 3
+    public static let uploadParallel = parallel
+    
+    public static let checkpointMagic = "92611BED-89E2-46B6-89E5-72F273D4B0A3"
+    public static let checkpointFileSuffixUploader = ".ucp"
+
     // defaults for feature flags
     public static let featureFlags: FeatureFlag = [.correctClockSkew, .autoDetectMimeType, .enableCRC64CheckUpload, .enableCRC64CheckDownload]
 }

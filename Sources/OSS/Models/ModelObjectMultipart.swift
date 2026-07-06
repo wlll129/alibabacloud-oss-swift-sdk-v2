@@ -605,3 +605,7 @@ public struct ListPartsResult: ResultModel {
 
     public var encodingType: Swift.String?
 }
+
+extension InitiateMultipartUploadResult: Sendable {}
+extension AbortMultipartUploadResult: Sendable {}
+extension CompleteMultipartUploadResult: Sendable {}
