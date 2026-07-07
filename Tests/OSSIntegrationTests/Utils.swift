@@ -23,11 +23,13 @@ open class Utils {
             var md5 = Insecure.MD5()
             var done = false
             while !done {
-                let data = fileHandle.readData(ofLength: chunkSize)
-                if data.count == 0 {
-                    done = true
+                autoreleasepool {
+                    let data = fileHandle.readData(ofLength: chunkSize)
+                    if data.count == 0 {
+                        done = true
+                    }
+                    md5.update(data: data)
                 }
-                md5.update(data: data)
             }
 
             return Data(md5.finalize())

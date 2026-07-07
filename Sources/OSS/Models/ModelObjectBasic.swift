@@ -1050,3 +1050,5 @@ public struct SealAppendObjectResult: ResultModel {
     /// The time in GMT format when the SealAppendObject operation was first performed on the object. This timestamp does not change even if the operation is performed again.
     public var sealedTime: String? { return commonProp.headers?[caseInsensitive: "x-oss-sealed-time"] }
 }
+
+extension PutObjectResult: Sendable {}

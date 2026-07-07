@@ -145,10 +145,12 @@ func assertThrowsAsyncError<T>(
 func assertNoThrow<T>(
     _ expression: @autoclosure () async throws -> T,
     file: StaticString = #filePath,
-    line: UInt = #line
+    line: UInt = #line,
+    _ resultHandler: (_ result: T) -> Void = { _ in }
 ) async {
     do {
-        _ = try await expression()
+        let result = try await expression()
+        resultHandler(result)
     } catch {
         XCTFail("Throw an error.", file: file, line: line)
     }

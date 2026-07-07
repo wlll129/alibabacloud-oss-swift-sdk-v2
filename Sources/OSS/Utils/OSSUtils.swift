@@ -1,5 +1,6 @@
 
 import Foundation
+import Crypto
 #if os(Windows)
     import WinSDK
 #elseif canImport(Android)
@@ -19,6 +20,34 @@ open class OSSUtils {
             return "\(region).oss.aliyuncs.com"
         case .overseas:
             return "oss-accelerate-overseas.aliyuncs.com"
+        }
+    }
+    
+    public static func calculateMd5(fileURL url: URL) throws -> Data {
+        let chunkSize = 8 * 1024
+        do {
+            let fileHandle = try FileHandle(forReadingFrom: url)
+            defer {
+                fileHandle.closeFile()
+            }
+
+            var md5 = Insecure.MD5()
+            var done = false
+            while !done {
+                autoreleasepool {
+                    let data = fileHandle.readData(ofLength: chunkSize)
+                    if data.count == 0 {
+                        done = true
+                    }
+                    md5.update(data: data)
+                }
+            }
+
+            return Data(md5.finalize())
+        } catch {
+            throw ClientError.fileOperationError(filePath: url.path,
+                                                 operation: "Open file error",
+                                                 innerError: error)
         }
     }
 }
@@ -172,6 +201,12 @@ public extension CharacterSet {
             $0.insert(charactersIn: $1)
         }
         return characterSet
+    }
+}
+
+extension Data {
+    func hexString() -> String {
+        self.compactMap { String(format: "%02x", $0) }.joined()
     }
 }
 

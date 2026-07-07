@@ -243,3 +243,18 @@ public extension ClientError {
         )
     }
 }
+
+/// Operation Error
+public extension ClientError {
+    static func fileOperationError(
+        filePath: String,
+        operation: String,
+        innerError: Error? = nil
+    ) -> ClientError {
+        return ClientError(
+            code: "OpenFileError",
+            message: "File operation error(\(operation)). File path: \(filePath)",
+            innerError: innerError
+        )
+    }
+}

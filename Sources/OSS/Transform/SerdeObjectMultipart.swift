@@ -389,6 +389,7 @@ extension Serde {
             part.partNumber = partElement["PartNumber"]?.toInt()
             part.size = partElement["Size"]?.toInt()
             part.lastModified = partElement["LastModified"]?.toDate()
+            part.hashCrc64 = partElement["HashCrc64ecma"]
             parts.append(part)
         } else if let partElements = body["Part"] as? [[String: String]] {
             for element in partElements {
@@ -398,6 +399,7 @@ extension Serde {
                 part.partNumber = element["PartNumber"]?.toInt()
                 part.size = element["Size"]?.toInt()
                 part.lastModified = element["LastModified"]?.toDate()
+                part.hashCrc64 = element["HashCrc64ecma"]
                 parts.append(part)
             }
         }

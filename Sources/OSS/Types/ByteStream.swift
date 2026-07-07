@@ -41,10 +41,14 @@ public extension ByteStream {
             return UInt64(d.count)
         /// Body data is read from the given file URL
         case let .file(fileURL):
-            guard let s = try FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber else {
-                throw _Error.fileForBodyNotFound
+            do {
+                guard let s = try FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber else {
+                    throw _Error.fileForBodyNotFound
+                }
+                return s.uint64Value
+            } catch {
+                throw ClientError.operationError(name: "Open file", innerError: error)
             }
-            return s.uint64Value
         case .stream:
             return nil
         }
