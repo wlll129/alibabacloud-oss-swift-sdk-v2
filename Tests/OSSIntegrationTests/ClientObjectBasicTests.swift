@@ -182,7 +182,7 @@ final class ClientObjectBasicTests: BaseTestCase {
 
     func testPutObjectAcl() async throws {
         let objectKey = randomObjectName()
-        let acl = "public-read"
+        let acl = "private"
         var request = PutObjectRequest(bucket: bucketName,
                                        key: objectKey)
         request.objectAcl = acl
@@ -938,7 +938,7 @@ final class ClientObjectBasicTests: BaseTestCase {
         let data = "hello oss".data(using: .utf8)!
         let sourceObjectKey = "copyTestSourceFile"
         let targetObjectKey = "copyTestTargetFile"
-        let acls = ["default", "private", "public-read", "public-read-write"]
+        let acls = ["default", "private"]
 
         var request = PutObjectRequest(bucket: bucketName,
                                        key: sourceObjectKey,
@@ -1418,6 +1418,66 @@ final class ClientObjectBasicTests: BaseTestCase {
         try await assertNoThrow(await client.deleteObject(deleteReqeust))
     }
 
+    // MARK: - test sealAppendObject
+
+    func testSealAppendObject() async throws {
+        let objectKey = "testAppendFile"
+        let data = "hello oss".data(using: .utf8)!
+
+        let request = AppendObjectRequest(bucket: bucketName,
+                                          key: objectKey,
+                                          position: 0,
+                                          body: .data(data))
+        let result = try await client?.appendObject(request)
+        XCTAssertEqual(result?.statusCode, 200)
+        XCTAssertNotNil(result?.nextAppendPosition)
+        XCTAssertNotNil(result?.hashCrc64ecma)
+
+        await assertThrowsAsyncError(try await client?.sealAppendObject(SealAppendObjectRequest(
+            bucket: bucketName,
+            key: objectKey,
+            position: data.count
+        ))) {
+            let error = $0 as? ServerError
+            XCTAssertEqual(400, error?.statusCode)
+            XCTAssertEqual("OperationNotSupported", error?.code)
+        }
+
+        let deleteReqeust = DeleteObjectRequest(bucket: bucketName, key: objectKey)
+        let _ = try await client?.deleteObject(deleteReqeust)
+    }
+
+    func testSealAppendObjectWithError() async throws {
+        await assertThrowsAsyncError(try await client?.sealAppendObject(SealAppendObjectRequest())) {
+            let error = $0 as? ClientError
+            XCTAssertEqual("Missing required field, request.bucket.", error?.message)
+        }
+
+        await assertThrowsAsyncError(try await client?.sealAppendObject(SealAppendObjectRequest(
+            bucket: bucketName
+        ))) {
+            let error = $0 as? ClientError
+            XCTAssertEqual("Missing required field, request.key.", error?.message)
+        }
+
+        await assertThrowsAsyncError(try await client?.sealAppendObject(SealAppendObjectRequest(
+            bucket: bucketName,
+            key: "key"
+        ))) {
+            let error = $0 as? ClientError
+            XCTAssertEqual("Missing required field, request.position.", error?.message)
+        }
+
+        await assertThrowsAsyncError(try await getInvalidAkClient().sealAppendObject(SealAppendObjectRequest(
+            bucket: bucketName,
+            key: "key",
+            position: 1
+        ))) {
+            let error = $0 as? ServerError
+            XCTAssertEqual(403, error?.statusCode)
+        }
+    }
+
     // MARK: - test DeleteMultipleObjects
 
     func testDeleteMultipleObjects() async throws {
@@ -1441,7 +1501,12 @@ final class ClientObjectBasicTests: BaseTestCase {
             }
         }
 
-        let request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
+        let request = await DeleteMultipleObjectsRequest(
+            bucket: bucketName,
+            delete: Delete(
+                objects: objects.elements
+            )
+        )
         let result = try await client.deleteMultipleObjects(request)
         XCTAssertEqual(result.statusCode, 200)
         XCTAssertNotNil(result.deletedObjects)
@@ -1461,104 +1526,156 @@ final class ClientObjectBasicTests: BaseTestCase {
 
     func testDeleteMultipleObjectsWithQuiet() async throws {
         let objectKey = randomObjectName()
-        var objects = ArrayActor<DeleteObject>()
         let client = self.client!
         let bucket = bucketName
 
         // quiet = true
-        await withThrowingTaskGroup(of: Void.self) {
-            for i in 0 ..< 10 {
-                $0.addTask {
-                    let object = objectKey.appending("\(i)")
-                    let deleteObject = DeleteObject(key: object)
-                    await objects.append(deleteObject)
-                    let putRequest = PutObjectRequest(bucket: bucket,
-                                                      key: object,
-                                                      body: .data("hello oss".data(using: .utf8)!))
-                    try await assertNoThrow(await client.putObject(putRequest))
+        do {
+            let objects = ArrayActor<DeleteObject>()
+            await withThrowingTaskGroup(of: Void.self) {
+                for i in 0 ..< 10 {
+                    $0.addTask {
+                        let object = objectKey.appending("\(i)")
+                        let deleteObject = DeleteObject(key: object)
+                        await objects.append(deleteObject)
+                        let putRequest = PutObjectRequest(bucket: bucket,
+                                                          key: object,
+                                                          body: .data("hello oss".data(using: .utf8)!))
+                        try await assertNoThrow(await client.putObject(putRequest))
+                    }
                 }
             }
-        }
 
-        var request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
-        request.quiet = true
-        var result = try await client.deleteMultipleObjects(request)
-        XCTAssertEqual(result.statusCode, 200)
-        XCTAssertNil(result.deletedObjects)
+            let request = await DeleteMultipleObjectsRequest(
+                bucket: bucketName,
+                delete: Delete(
+                    quiet: true,
+                    objects: objects.elements
+                )
+            )
+            let result = try await client.deleteMultipleObjects(request)
+            XCTAssertEqual(result.statusCode, 200)
+            XCTAssertNil(result.deletedObjects)
 
-        for object in await objects.elements {
-            try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
-                let serverError = $0 as? ServerError
-                XCTAssertEqual(serverError?.statusCode, 404)
+            for object in await objects.elements {
+                try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
+                    let serverError = $0 as? ServerError
+                    XCTAssertEqual(serverError?.statusCode, 404)
+                }
             }
         }
 
         // quiet = false
-        objects = ArrayActor<DeleteObject>()
-        await withThrowingTaskGroup(of: Void.self) {
-            for i in 0 ..< 10 {
-                $0.addTask {
-                    let object = objectKey.appending("\(i)")
-                    let deleteObject = DeleteObject(key: object)
-                    await objects.append(deleteObject)
-                    let putRequest = PutObjectRequest(bucket: bucket,
-                                                      key: object,
-                                                      body: .data("hello oss".data(using: .utf8)!))
-                    try await assertNoThrow(await client.putObject(putRequest))
+        do {
+            let objects = ArrayActor<DeleteObject>()
+            await withThrowingTaskGroup(of: Void.self) {
+                for i in 0 ..< 10 {
+                    $0.addTask {
+                        let object = objectKey.appending("\(i)")
+                        let deleteObject = DeleteObject(key: object)
+                        await objects.append(deleteObject)
+                        let putRequest = PutObjectRequest(bucket: bucket,
+                                                          key: object,
+                                                          body: .data("hello oss".data(using: .utf8)!))
+                        try await assertNoThrow(await client.putObject(putRequest))
+                    }
                 }
             }
-        }
 
-        request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
-        request.quiet = false
-        result = try await client.deleteMultipleObjects(request)
-        XCTAssertEqual(result.statusCode, 200)
-        XCTAssertNotNil(result.deletedObjects)
-        for object in await objects.elements {
-            XCTAssertTrue(result.deletedObjects!.contains(where: { deletedObject in
-                deletedObject.key == object.key
-            }))
-        }
+            let request = await DeleteMultipleObjectsRequest(
+                bucket: bucketName,
+                delete: Delete(
+                    quiet: false,
+                    objects: objects.elements
+                )
+            )
+            let result = try await client.deleteMultipleObjects(request)
+            XCTAssertEqual(result.statusCode, 200)
+            XCTAssertNotNil(result.deletedObjects)
+            for object in await objects.elements {
+                XCTAssertTrue(result.deletedObjects!.contains(where: { deletedObject in
+                    deletedObject.key == object.key
+                }))
+            }
 
-        for object in await objects.elements {
-            try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
-                let serverError = $0 as? ServerError
-                XCTAssertEqual(serverError?.statusCode, 404)
+            for object in await objects.elements {
+                try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
+                    let serverError = $0 as? ServerError
+                    XCTAssertEqual(serverError?.statusCode, 404)
+                }
             }
         }
 
         // quiet is nil
-        objects = ArrayActor<DeleteObject>()
-        await withThrowingTaskGroup(of: Void.self) {
-            for i in 0 ..< 10 {
-                $0.addTask {
-                    let object = objectKey.appending("\(i)")
-                    let deleteObject = DeleteObject(key: object)
-                    await objects.append(deleteObject)
-                    let putRequest = PutObjectRequest(bucket: bucket,
-                                                      key: object,
-                                                      body: .data("hello oss".data(using: .utf8)!))
-                    try await assertNoThrow(await client.putObject(putRequest))
+        do {
+            let objects = ArrayActor<DeleteObject>()
+            await withThrowingTaskGroup(of: Void.self) {
+                for i in 0 ..< 10 {
+                    $0.addTask {
+                        let object = objectKey.appending("\(i)")
+                        let deleteObject = DeleteObject(key: object)
+                        await objects.append(deleteObject)
+                        let putRequest = PutObjectRequest(bucket: bucket,
+                                                          key: object,
+                                                          body: .data("hello oss".data(using: .utf8)!))
+                        try await assertNoThrow(await client.putObject(putRequest))
+                    }
+                }
+            }
+
+            let request = await DeleteMultipleObjectsRequest(
+                bucket: bucketName,
+                delete: Delete(
+                    quiet: false,
+                    objects: objects.elements
+                )
+            )
+            let result = try await client.deleteMultipleObjects(request)
+            XCTAssertEqual(result.statusCode, 200)
+            XCTAssertNotNil(result.deletedObjects)
+            for object in await objects.elements {
+                XCTAssertTrue(result.deletedObjects!.contains(where: { deletedObject in
+                    deletedObject.key == object.key
+                }))
+            }
+
+            for object in await objects.elements {
+                try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
+                    let serverError = $0 as? ServerError
+                    XCTAssertEqual(serverError?.statusCode, 404)
                 }
             }
         }
+    }
 
-        request = await DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects.elements)
-        request.quiet = false
-        result = try await client.deleteMultipleObjects(request)
-        XCTAssertEqual(result.statusCode, 200)
-        XCTAssertNotNil(result.deletedObjects)
-        for object in await objects.elements {
-            XCTAssertTrue(result.deletedObjects!.contains(where: { deletedObject in
-                deletedObject.key == object.key
-            }))
+    func testDeleteMultipleObjectsWithSpecialCharacters() async throws {
+        let specialKeys = [
+            "key&1<2>3\"4'5",
+            "key\ttab",
+            "key\nnewline",
+        ]
+
+        for key in specialKeys {
+            let putRequest = PutObjectRequest(
+                bucket: bucketName,
+                key: key,
+                body: .data("hello oss".data(using: .utf8)!)
+            )
+            try await assertNoThrow(await client?.putObject(putRequest))
         }
 
-        for object in await objects.elements {
-            try await assertThrowsAsyncError(await client.headObject(HeadObjectRequest(bucket: bucketName, key: object.key))) {
-                let serverError = $0 as? ServerError
-                XCTAssertEqual(serverError?.statusCode, 404)
-            }
+        let objects = specialKeys.map { DeleteObject(key: $0) }
+        let request = DeleteMultipleObjectsRequest(
+            bucket: bucketName,
+            delete: Delete(
+                objects: objects
+            )
+        )
+        let result = try await client?.deleteMultipleObjects(request)
+        XCTAssertEqual(result?.statusCode, 200)
+        XCTAssertNotNil(result?.deletedObjects)
+        for key in specialKeys {
+            XCTAssertTrue(result!.deletedObjects!.contains(where: { $0.key == key }))
         }
     }
 
@@ -1590,7 +1707,12 @@ final class ClientObjectBasicTests: BaseTestCase {
         objects.append(contentsOf: existedFile)
         objects.append(contentsOf: noExistedFile)
 
-        let request = DeleteMultipleObjectsRequest(bucket: bucketName, objects: objects)
+        let request = DeleteMultipleObjectsRequest(
+            bucket: bucketName,
+            delete: Delete(
+                objects: objects
+            )
+        )
         let result = try await client?.deleteMultipleObjects(request)
         XCTAssertEqual(result?.statusCode, 200)
         XCTAssertNotNil(result?.deletedObjects)
@@ -1642,8 +1764,12 @@ final class ClientObjectBasicTests: BaseTestCase {
             objects.append(deleteObject)
         }
 
-        let request = DeleteMultipleObjectsRequest(bucket: bucketName,
-                                                   objects: objects)
+        let request = DeleteMultipleObjectsRequest(
+            bucket: bucketName,
+            delete: Delete(
+                objects: objects
+            )
+        )
         let result = try await client?.deleteMultipleObjects(request)
         XCTAssertEqual(result?.statusCode, 200)
         XCTAssertNotNil(result?.deletedObjects)

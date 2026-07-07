@@ -18,9 +18,9 @@ public class BaseTestCase: XCTestCase {
     private var _client: Client? = nil
     private var _invalidClient: Client? = nil
 
-    let bucketNamePrefix = "swift-sdk-test-bucket-"
-    let objectNamePrefix = "swift-sdk-test-object-"
-    let fileNamePrefix = "swift-sdk-test-file-"
+    let bucketNamePrefix = "oss-sdk-test-swift-bucket-"
+    let objectNamePrefix = "oss-sdk-test-swift-object-"
+    let fileNamePrefix = "oss-sdk-test-swift-file-"
 
     let tempDir = NSTemporaryDirectory() + "swift-sdk-test_" + NSUUID().uuidString
     #if os(Windows)
@@ -88,7 +88,7 @@ public class BaseTestCase: XCTestCase {
     }
 
 
-    var bucketName = "object-extension-test-\(Int(Date().timeIntervalSince1970))"
+    var bucketName = "oss-sdk-test-swift-bucket-\(Int(Date().timeIntervalSince1970))"
 
     var client: Client?
 
@@ -218,7 +218,12 @@ public class BaseTestCase: XCTestCase {
                 let object = DeleteObject(key: version.key, versionId: version.versionId)
                 objects.append(object)
             }
-            let deleteRequest = DeleteMultipleObjectsRequest(bucket: bucket, objects: objects)
+            let deleteRequest = DeleteMultipleObjectsRequest(
+                bucket: bucket,
+                delete: Delete(
+                    objects: objects
+                )
+            )
             try await assertNoThrow(await client.deleteMultipleObjects(deleteRequest))
         }
         if let deleteMarkers = listVersionResult.deleteMarkers {
@@ -227,7 +232,12 @@ public class BaseTestCase: XCTestCase {
                 let object = DeleteObject(key: deleteMarker.key, versionId: deleteMarker.versionId)
                 objects.append(object)
             }
-            let deleteRequest = DeleteMultipleObjectsRequest(bucket: bucket, objects: objects)
+            let deleteRequest = DeleteMultipleObjectsRequest(
+                bucket: bucket,
+                delete: Delete(
+                    objects: objects
+                )
+            )
             try await assertNoThrow(await client.deleteMultipleObjects(deleteRequest))
         }
 
@@ -241,7 +251,12 @@ public class BaseTestCase: XCTestCase {
                 let object = DeleteObject(key: content.key)
                 objects.append(object)
             }
-            let deleteRequest = DeleteMultipleObjectsRequest(bucket: bucket, objects: objects)
+            let deleteRequest = DeleteMultipleObjectsRequest(
+                bucket: bucket,
+                delete: Delete(
+                    objects: objects
+                )
+            )
             try await assertNoThrow(await client.deleteMultipleObjects(deleteRequest))
         }
 

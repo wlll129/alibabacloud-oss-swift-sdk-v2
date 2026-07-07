@@ -285,6 +285,7 @@ public extension Client {
             ]
         )
         input.bucket = try request.bucket.ensureRequired(field: "request.bucket")
+        try request.delete.ensureRequired(field: "request.delete")
 
         var req = request
         try Serde.serializeInput(&req, &input, [Serde.serializeDeleteMultipleObjects, Serde.addContentMd5])
@@ -292,7 +293,7 @@ public extension Client {
         var output = try await clientImpl.execute(with: &input, args: options)
 
         var result = DeleteMultipleObjectsResult()
-        let deserialize: [SerdeDeserializeDelegate] = request.quiet ?? false ? [] : [Serde.deserializeDeleteMultipleObjects]
+        let deserialize: [SerdeDeserializeDelegate] = request.delete?.quiet ?? false ? [] : [Serde.deserializeDeleteMultipleObjects]
         try Serde.deserializeOutput(&result, &output, deserialize)
 
         return result
@@ -364,6 +365,37 @@ public extension Client {
         var result = CleanRestoredObjectResult()
 
         try Serde.deserializeOutput(&result, &output, [Serde.deserializeCleanRestoredObject])
+
+        return result
+    }
+
+    func sealAppendObject(
+        _ request: SealAppendObjectRequest,
+        _ options: OperationOptions? = nil
+    ) async throws -> SealAppendObjectResult {
+        var input = OperationInput(
+            operationName: "SealAppendObject",
+            method: "POST",
+            headers: [
+                "Content-Type": "application/xml",
+            ],
+            parameters: [
+                "seal": "",
+            ]
+        )
+        input.bucket = try request.bucket.ensureRequired(field: "request.bucket")
+        input.key = try request.key.ensureRequired(field: "request.key")
+        _ = try request.position.ensureRequired(field: "request.position")
+
+        var req = request
+
+        try Serde.serializeInput(&req, &input, [Serde.serializeSealAppendObject])
+
+        var output = try await clientImpl.execute(with: &input, args: options)
+
+        var result = SealAppendObjectResult()
+
+        try Serde.deserializeOutput(&result, &output, [Serde.deserializeSealAppendObject])
 
         return result
     }
