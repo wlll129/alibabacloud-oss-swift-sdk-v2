@@ -401,7 +401,7 @@ public struct PutBucketRequest: RequestModel {
     /// For more information, see [View basic information of a resource group](~~151181~~) and [ListResourceGroups](~~158855~~).  You cannot configure a resource group for an Anywhere Bucket.
     public var resourceGroupId: Swift.String?
 
-    /// <no value>
+    /// The tagging of the bucket.
     public var bucketTagging: Swift.String?
 
     /// The container that stores the request body.
