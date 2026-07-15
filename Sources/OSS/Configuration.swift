@@ -10,6 +10,9 @@ public class Configuration {
     /// The region in which the bucket is located.
     public var region: String?
 
+    /// The Alibaba Cloud account ID (UID).
+    public var accountId: String?
+
     /// Max retry count, default value is 3
     public var retryMaxAttempts: Int?
 
@@ -114,6 +117,15 @@ public extension Configuration {
     @discardableResult
     func withRegion(_ region: String) -> Self {
         self.region = region
+        return self
+    }
+
+    /// Set the Alibaba Cloud account ID (UID) used by the agentic bucket feature.
+    /// - Parameter accountId: The Alibaba Cloud account ID (UID).
+    /// - Returns: self
+    @discardableResult
+    func withAccountId(_ accountId: String) -> Self {
+        self.accountId = accountId
         return self
     }
 

@@ -60,6 +60,10 @@ extension Serde {
             input.headers["x-oss-bucket-tagging"] = value
         }
 
+        if let value = request.agenticBucket {
+            input.headers["x-oss-agentic-bucket"] = value
+        }
+
         var xmlBody = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         xmlBody.append("<CreateBucketConfiguration>")
         if let storageClass = request.createBucketConfiguration?.storageClass {
@@ -389,6 +393,8 @@ extension Serde {
 
         bucket.comment = bucketContent?["Comment"] as? String
         bucket.creationDate = (bucketContent?["CreationDate"] as? String)?.toDate()
+        bucket.bucketResourceType = bucketContent?["BucketResourceType"] as? String
+        bucket.agenticBucketName = bucketContent?["AgenticBucketName"] as? String
         bucket.blockPublicAccess = (bucketContent?["BlockPublicAccess"] as? String)?.toBool()
         if let accessControlList = bucketContent?["AccessControlList"] as? [String: String] {
             bucket.accessControlList = AccessControlList(grant: accessControlList["Grant"])
