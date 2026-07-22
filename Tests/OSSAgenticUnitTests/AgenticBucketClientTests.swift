@@ -6,7 +6,7 @@ final class AgenticBucketClientTests: XCTestCase {
     private let accountId = "137"
     private let region = "cn-hangzhou"
 
-    private func makeConfig(accountId: String? = "137") -> Configuration {
+    private func makeConfig(accountId: String? = "137", usePathStyle: Bool = false) -> Configuration {
         let config = Configuration.default()
             .withRegion(region)
             .withCredentialsProvider(StaticCredentialsProvider(accessKeyId: "ak", accessKeySecret: "sk"))
@@ -14,15 +14,18 @@ final class AgenticBucketClientTests: XCTestCase {
         if let accountId = accountId {
             config.withAccountId(accountId)
         }
+        if usePathStyle {
+            config.withUsePathStyle(true)
+        }
         return config
     }
 
-    private func makeClient(_ mock: AgenticMock, accountId: String? = "137") -> AgenticBucketClient {
-        return AgenticBucketClient(makeConfig(accountId: accountId)) { $0.executeMW = mock }
+    private func makeClient(_ mock: AgenticMock, accountId: String? = "137", usePathStyle: Bool = false) -> AgenticBucketClient {
+        return AgenticBucketClient(makeConfig(accountId: accountId, usePathStyle: usePathStyle)) { $0.executeMW = mock }
     }
 
-    private func makeBucketSpaceClient(_ mock: AgenticMock, accountId: String? = "137") -> Client {
-        return BucketSpaceClient.make(makeConfig(accountId: accountId)) { $0.executeMW = mock }
+    private func makeBucketSpaceClient(_ mock: AgenticMock, accountId: String? = "137", usePathStyle: Bool = false) -> Client {
+        return BucketSpaceClient.make(makeConfig(accountId: accountId, usePathStyle: usePathStyle)) { $0.executeMW = mock }
     }
 
     // MARK: - Host routing
@@ -127,6 +130,39 @@ final class AgenticBucketClientTests: XCTestCase {
         XCTAssertEqual(mock.requests.count, 1)
         let uri = mock.requests[0].requestUri.absoluteString
         XCTAssertTrue(uri.hasPrefix("https://prefix-137-cn-hangzhou-bs-apsr.oss-cn-hangzhou.aliyuncs.com/obj"), uri)
+    }
+
+    // MARK: - Path-style routing
+
+    func testGetAgenticBucketPathStyleHost() async throws {
+        let mock = AgenticMock()
+        let client = makeClient(mock, usePathStyle: true)
+        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        // Under path-style the physical name lives in the path, host stays bare.
+        XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/prefix-137-cn-hangzhou-ab-apsr/"), uri)
+        XCTAssertTrue(uri.contains("agenticBucket"), uri)
+    }
+
+    func testListAgenticBucketsPathStyleUsesRegionalHost() async throws {
+        let mock = AgenticMock()
+        let client = makeClient(mock, usePathStyle: true)
+        _ = try? await client.listAgenticBuckets(ListAgenticBucketsRequest())
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        // No bucket -> bare regional host, no suffix injected in either style.
+        XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/"), uri)
+        XCTAssertFalse(uri.contains("ab-apsr"), uri)
+    }
+
+    func testBucketSpaceScopedClientPathStyleHost() async throws {
+        let mock = AgenticMock()
+        let scoped = makeBucketSpaceClient(mock, usePathStyle: true)
+        _ = try? await scoped.putObject(PutObjectRequest(bucket: "prefix", key: "obj"))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/prefix-137-cn-hangzhou-bs-apsr/obj"), uri)
     }
 
     // MARK: - Required-field errors

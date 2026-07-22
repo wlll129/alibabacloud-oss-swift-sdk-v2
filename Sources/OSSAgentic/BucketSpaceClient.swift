@@ -43,17 +43,29 @@ func makeScopedClient(
     // Apply the agentic routing on top of the extraActions result so it always wins.
     let agenticAction: ClientOptionsAction = { opts in
         opts.bucketNameResolver = buildName
-        // Route to the physical virtual-hosted host, reading the endpoint that
-        // extraActions may have adjusted.
+        // Route to the physical host, reading the endpoint that extraActions may have
+        // adjusted. Under path-style the physical name lives in the path instead of the host.
         if let endpoint = opts.endpoint, let scheme = endpoint.scheme {
             let authority = endpoint.hostPort()
+            let addressStyle = opts.addressStyle
             opts.endpointProvider = { input in
-                let host = input.bucket != nil ? "\(buildName(input)).\(authority)" : authority
-                var result = "\(scheme)://\(host)/"
-                if let key = input.key {
-                    result += key.urlEncodePath() ?? ""
+                var paths: [String] = []
+                var host = authority
+                if input.bucket != nil {
+                    switch addressStyle {
+                    case .path:
+                        paths.append(buildName(input))
+                        if input.key == nil {
+                            paths.append("")
+                        }
+                    default: // virtual host
+                        host = "\(buildName(input)).\(authority)"
+                    }
                 }
-                return result
+                if let encodeKey = input.key?.urlEncodePath() {
+                    paths.append(encodeKey)
+                }
+                return "\(scheme)://\(host)/\(paths.joined(separator: "/"))"
             }
         }
     }
