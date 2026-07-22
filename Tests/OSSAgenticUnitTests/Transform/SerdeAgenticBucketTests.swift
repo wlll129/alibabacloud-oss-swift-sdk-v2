@@ -219,10 +219,11 @@ final class SerdeAgenticBucketTests: XCTestCase {
         XCTAssertEqual(input.headers["Content-MD5"], emptyMd5)
 
         input = OperationInput()
-        request = ListBucketSpacesRequest(bucket: "prefix", prefix: "foo", continuationToken: "token", maxKeys: 20)
+        request = ListBucketSpacesRequest(bucket: "prefix", prefix: "foo", continuationToken: "token", startAfter: "space-0", maxKeys: 20)
         try Serde.serializeInput(&request, &input, [serializeListBucketSpaces, Serde.addContentMd5])
         XCTAssertEqual(input.parameters["prefix"], "foo")
         XCTAssertEqual(input.parameters["continuation-token"], "token")
+        XCTAssertEqual(input.parameters["start-after"], "space-0")
         XCTAssertEqual(input.parameters["max-keys"], "20")
     }
 
@@ -241,6 +242,7 @@ final class SerdeAgenticBucketTests: XCTestCase {
         xml.append("<MaxKeys>100</MaxKeys>")
         xml.append("<ContinuationToken></ContinuationToken>")
         xml.append("<NextContinuationToken>next</NextContinuationToken>")
+        xml.append("<StartAfter>space-0</StartAfter>")
         xml.append("<IsTruncated>true</IsTruncated>")
         xml.append("<BucketSpaces>")
         xml.append("<BucketSpace><Name>s1</Name><Location>oss-cn-hangzhou</Location><CreationDate>2024-01-01T00:00:00.000Z</CreationDate><StorageClass>Standard</StorageClass></BucketSpace>")
@@ -255,6 +257,7 @@ final class SerdeAgenticBucketTests: XCTestCase {
         XCTAssertEqual(result.prefix, "foo")
         XCTAssertEqual(result.maxKeys, 100)
         XCTAssertEqual(result.nextContinuationToken, "next")
+        XCTAssertEqual(result.startAfter, "space-0")
         XCTAssertEqual(result.isTruncated, true)
         XCTAssertEqual(result.bucketSpaces?.count, 2)
         XCTAssertEqual(result.bucketSpaces?[0].name, "s1")

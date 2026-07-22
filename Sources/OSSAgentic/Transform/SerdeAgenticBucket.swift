@@ -176,6 +176,9 @@ func serializeListBucketSpaces(
     if let value = request.continuationToken {
         input.parameters["continuation-token"] = value
     }
+    if let value = request.startAfter {
+        input.parameters["start-after"] = value
+    }
     if let value = request.maxKeys {
         input.parameters["max-keys"] = String(value)
     }
@@ -198,6 +201,7 @@ func deserializeListBucketSpaces(
     result.maxKeys = (body["MaxKeys"] as? String)?.toInt()
     result.continuationToken = body["ContinuationToken"] as? String
     result.nextContinuationToken = body["NextContinuationToken"] as? String
+    result.startAfter = body["StartAfter"] as? String
     result.isTruncated = (body["IsTruncated"] as? String)?.toBool()
 
     if let wrapper = body["BucketSpaces"] as? [String: Any],

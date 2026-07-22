@@ -313,6 +313,9 @@ public struct ListBucketSpacesRequest: RequestModel {
     /// The token from which the list operation continues.
     public var continuationToken: Swift.String?
 
+    /// The name of the BucketSpace after which the list operation begins.
+    public var startAfter: Swift.String?
+
     /// The maximum number of BucketSpaces to return. Default: 100.
     public var maxKeys: Swift.Int?
 
@@ -320,12 +323,14 @@ public struct ListBucketSpacesRequest: RequestModel {
         bucket: Swift.String? = nil,
         prefix: Swift.String? = nil,
         continuationToken: Swift.String? = nil,
+        startAfter: Swift.String? = nil,
         maxKeys: Swift.Int? = nil,
         commonProp: RequestModelProp? = nil
     ) {
         self.bucket = bucket
         self.prefix = prefix
         self.continuationToken = continuationToken
+        self.startAfter = startAfter
         self.maxKeys = maxKeys
         self.commonProp = commonProp ?? RequestModelProp()
     }
@@ -349,6 +354,9 @@ public struct ListBucketSpacesResult: ResultModel {
 
     /// The token used to continue the next list operation.
     public var nextContinuationToken: Swift.String?
+
+    /// The name of the BucketSpace after which the list operation began.
+    public var startAfter: Swift.String?
 
     /// Whether the returned result is truncated.
     public var isTruncated: Swift.Bool?
