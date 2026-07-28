@@ -407,7 +407,7 @@ class ClientImpl {
         // is never mutated (matches the endpointProvider/bucketNameResolver split).
         var signingBucket = input.bucket
         if let resolver = options.bucketNameResolver, input.bucket != nil {
-            signingBucket = resolver(input)
+            signingBucket = try resolver(input)
         }
         var signingContext = SigningContext(
             bucket: signingBucket,
@@ -430,7 +430,7 @@ class ClientImpl {
         var url: String
         if let endpointProvider = options.endpointProvider {
             // endpointProvider fully replaces the default host/path construction.
-            url = endpointProvider(input)
+            url = try endpointProvider(input)
         } else {
             let baseUrl = input.buildHostPath(
                 host: endpoint.hostPort(),

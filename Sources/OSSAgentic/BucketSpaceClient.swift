@@ -25,8 +25,10 @@ func makeScopedClient(
     let region = config.region ?? ""
 
     // Resolves the physical bucket name from an operation input, without mutating it.
-    let buildName: (OperationInput) -> String = { input in
+    let buildName: (OperationInput) throws -> String = { input in
         guard let bucket = input.bucket else { return "" }
+        guard !accountId.isEmpty else { throw ClientError.paramRequiredError(field: "AccountId") }
+        guard !region.isEmpty else { throw ClientError.paramRequiredError(field: "Region") }
         return "\(bucket)-\(accountId)-\(region)\(suffix)"
     }
 
@@ -54,12 +56,19 @@ func makeScopedClient(
                 if input.bucket != nil {
                     switch addressStyle {
                     case .path:
-                        paths.append(buildName(input))
+                        paths.append(try buildName(input))
                         if input.key == nil {
                             paths.append("")
                         }
                     default: // virtual host
-                        host = "\(buildName(input)).\(authority)"
+                        let name = try buildName(input)
+                        guard name.count <= 63 else {
+                            throw ClientError(
+                                code: "ValidationError",
+                                message: "the host label \"\(name)\" exceeds the maximum length of 63 characters"
+                            )
+                        }
+                        host = "\(name).\(authority)"
                     }
                 }
                 if let encodeKey = input.key?.urlEncodePath() {

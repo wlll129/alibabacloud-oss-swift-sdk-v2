@@ -26,11 +26,11 @@ public class ClientOptions {
     /// Resolves the bucket name used for signing from an operation input. When set, its
     /// return value replaces input.bucket in the signing context only; the input is not
     /// mutated. Defaults to nil (sign with input.bucket).
-    public var bucketNameResolver: ((OperationInput) -> String)?
+    public var bucketNameResolver: ((OperationInput) throws -> String)?
 
     /// Builds the full request URL (scheme://host/path) from an operation input. When set,
     /// it fully replaces the default host/path construction. Defaults to nil.
-    public var endpointProvider: ((OperationInput) -> String)?
+    public var endpointProvider: ((OperationInput) throws -> String)?
 
     /// The middleware to send request, use for test
     var executeMW: ExecuteMiddleware?

@@ -6,11 +6,13 @@ final class AgenticBucketClientTests: XCTestCase {
     private let accountId = "137"
     private let region = "cn-hangzhou"
 
-    private func makeConfig(accountId: String? = "137", usePathStyle: Bool = false) -> Configuration {
+    private func makeConfig(accountId: String? = "137", region: String? = "cn-hangzhou", usePathStyle: Bool = false) -> Configuration {
         let config = Configuration.default()
-            .withRegion(region)
             .withCredentialsProvider(StaticCredentialsProvider(accessKeyId: "ak", accessKeySecret: "sk"))
             .withRetryer(NopRetryer())
+        if let region = region {
+            config.withRegion(region)
+        }
         if let accountId = accountId {
             config.withAccountId(accountId)
         }
@@ -20,8 +22,8 @@ final class AgenticBucketClientTests: XCTestCase {
         return config
     }
 
-    private func makeClient(_ mock: AgenticMock, accountId: String? = "137", usePathStyle: Bool = false) -> AgenticBucketClient {
-        return AgenticBucketClient(makeConfig(accountId: accountId, usePathStyle: usePathStyle)) { $0.executeMW = mock }
+    private func makeClient(_ mock: AgenticMock, accountId: String? = "137", region: String? = "cn-hangzhou", usePathStyle: Bool = false) -> AgenticBucketClient {
+        return AgenticBucketClient(makeConfig(accountId: accountId, region: region, usePathStyle: usePathStyle)) { $0.executeMW = mock }
     }
 
     private func makeBucketSpaceClient(_ mock: AgenticMock, accountId: String? = "137", usePathStyle: Bool = false) -> Client {
@@ -210,22 +212,91 @@ final class AgenticBucketClientTests: XCTestCase {
         XCTAssertEqual(mock.requests.count, 0)
     }
 
-    func testEmptyAccountIdIsAllowed() async throws {
+    func testEmptyAccountIdThrows() async throws {
         let mock = AgenticMock()
         let client = makeClient(mock, accountId: "")
-        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
-        // Empty account id does not raise the validation error; the request is sent.
-        XCTAssertEqual(mock.requests.count, 1)
+        var thrown: Error?
+        do {
+            _ = try await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
+        } catch {
+            thrown = error
+        }
+        // Empty account id is a required-field error; no request is sent.
+        XCTAssertEqual((thrown as? ClientError)?.code, "ParameterError")
+        XCTAssertEqual(mock.requests.count, 0)
     }
 
-    func testMissingAccountIdIsNotBlocked() async throws {
+    func testMissingAccountIdThrows() async throws {
         let mock = AgenticMock()
         let client = makeClient(mock, accountId: nil)
-        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
-        // nil account id -> empty segment in the physical name, request still sent.
+        var thrown: Error?
+        do {
+            _ = try await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
+        } catch {
+            thrown = error
+        }
+        // nil account id is normalized to "" -> required-field error, no request sent.
+        XCTAssertEqual((thrown as? ClientError)?.code, "ParameterError")
+        XCTAssertEqual(mock.requests.count, 0)
+    }
+
+    func testMissingRegionThrows() async throws {
+        let mock = AgenticMock()
+        let client = makeClient(mock, region: "")
+        var thrown: Error?
+        do {
+            _ = try await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
+        } catch {
+            thrown = error
+        }
+        XCTAssertEqual((thrown as? ClientError)?.code, "ParameterError")
+        XCTAssertEqual(mock.requests.count, 0)
+    }
+
+    // MARK: - Host label length (virtual-hosted only)
+
+    func testHostLabelWithinLimitSucceeds() async throws {
+        // "{bucket}-137-cn-hangzhou-ab-apsr": suffix part is 24 chars, so bucket 39 -> 63.
+        let bucket = String(repeating: "a", count: 39)
+        let mock = AgenticMock()
+        let client = makeClient(mock)
+        // Ignore response parsing; a sent request proves the host label passed validation.
+        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: bucket))
         XCTAssertEqual(mock.requests.count, 1)
+        let name = "\(bucket)-137-cn-hangzhou-ab-apsr"
+        XCTAssertEqual(name.count, 63)
         let uri = mock.requests[0].requestUri.absoluteString
-        XCTAssertTrue(uri.contains("prefix--cn-hangzhou-ab-apsr"), uri)
+        XCTAssertTrue(uri.hasPrefix("https://\(name).oss-cn-hangzhou.aliyuncs.com/"), uri)
+    }
+
+    func testHostLabelTooLongThrows() async throws {
+        // bucket 40 -> physical name 64, exceeds the 63-char DNS label limit.
+        let bucket = String(repeating: "a", count: 40)
+        let mock = AgenticMock()
+        let client = makeClient(mock)
+        var thrown: Error?
+        do {
+            _ = try await client.getAgenticBucket(GetAgenticBucketRequest(bucket: bucket))
+        } catch {
+            thrown = error
+        }
+        XCTAssertEqual((thrown as? ClientError)?.code, "ValidationError")
+        XCTAssertTrue(((thrown as? ClientError)?.message ?? "")
+            .contains("exceeds the maximum length of 63 characters"),
+            String(describing: thrown))
+        XCTAssertEqual(mock.requests.count, 0)
+    }
+
+    func testHostLabelTooLongPathStyleAllowed() async throws {
+        // Path style has no DNS label limit, so the same long name is fine.
+        let bucket = String(repeating: "a", count: 40)
+        let mock = AgenticMock()
+        let client = makeClient(mock, usePathStyle: true)
+        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: bucket))
+        XCTAssertEqual(mock.requests.count, 1)
+        let name = "\(bucket)-137-cn-hangzhou-ab-apsr"
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/\(name)/"), uri)
     }
 
     // MARK: - Success responses
