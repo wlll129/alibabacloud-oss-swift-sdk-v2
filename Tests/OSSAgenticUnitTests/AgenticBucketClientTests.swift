@@ -30,6 +30,20 @@ final class AgenticBucketClientTests: XCTestCase {
         return BucketSpaceClient.make(makeConfig(accountId: accountId, usePathStyle: usePathStyle)) { $0.executeMW = mock }
     }
 
+    private func makeAliasClient(_ mock: AgenticMock, accountId: String? = "137", region: String? = "cn-hangzhou") -> AgenticBucketClient {
+        return AgenticBucketClient(makeConfig(accountId: accountId, region: region)) {
+            $0.executeMW = mock
+            $0.addressStyle = .virtualHostedAlias
+        }
+    }
+
+    private func makeAliasBucketSpaceClient(_ mock: AgenticMock, accountId: String? = "137") -> Client {
+        return BucketSpaceClient.make(makeConfig(accountId: accountId)) {
+            $0.executeMW = mock
+            $0.addressStyle = .virtualHostedAlias
+        }
+    }
+
     // MARK: - Host routing
 
     func testCreateAgenticBucketHost() async throws {
@@ -165,6 +179,80 @@ final class AgenticBucketClientTests: XCTestCase {
         XCTAssertEqual(mock.requests.count, 1)
         let uri = mock.requests[0].requestUri.absoluteString
         XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/prefix-137-cn-hangzhou-bs-apsr/obj"), uri)
+    }
+
+    // MARK: - Alias-style routing
+
+    func testGetAgenticBucketAliasStyleHost() async throws {
+        let mock = AgenticMock()
+        let client = makeAliasClient(mock)
+        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        // The short alias label replaces "{accountId}-{region}" in the host.
+        XCTAssertTrue(uri.hasPrefix("https://prefix-alias-ab-apsr.oss-cn-hangzhou.aliyuncs.com/"), uri)
+        XCTAssertTrue(uri.contains("agenticBucket"), uri)
+    }
+
+    func testListAgenticBucketsAliasStyleUsesRegionalHost() async throws {
+        let mock = AgenticMock()
+        let client = makeAliasClient(mock)
+        _ = try? await client.listAgenticBuckets(ListAgenticBucketsRequest())
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        // No bucket -> bare regional host, no label injected.
+        XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/"), uri)
+        XCTAssertFalse(uri.contains("alias"), uri)
+    }
+
+    func testBucketSpaceScopedClientAliasStyleHost() async throws {
+        let mock = AgenticMock()
+        let scoped = makeAliasBucketSpaceClient(mock)
+        _ = try? await scoped.putObject(PutObjectRequest(bucket: "prefix", key: "obj"))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://prefix-alias-bs-apsr.oss-cn-hangzhou.aliyuncs.com/obj"), uri)
+    }
+
+    func testAliasStyleStillRequiresAccountId() async throws {
+        // The short label only shows up in the host, signing keeps the full name,
+        // so accountId / region stay required.
+        let mock = AgenticMock()
+        let noAccount = makeAliasClient(mock, accountId: "")
+        var error = await captureError(try await noAccount.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix")))
+        XCTAssertEqual((error as? ClientError)?.code, "ParameterError")
+        XCTAssertEqual(mock.requests.count, 0)
+
+        let noRegion = makeAliasClient(mock, region: "")
+        error = await captureError(try await noRegion.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix")))
+        XCTAssertEqual((error as? ClientError)?.code, "ParameterError")
+        XCTAssertEqual(mock.requests.count, 0)
+    }
+
+    func testAliasHostLabelWithinLimitSucceeds() async throws {
+        // "{bucket}-alias-ab-apsr": suffix part is 14 chars, so bucket 49 -> 63.
+        let bucket = String(repeating: "a", count: 49)
+        let label = "\(bucket)-alias-ab-apsr"
+        XCTAssertEqual(label.count, 63)
+        let mock = AgenticMock()
+        let client = makeAliasClient(mock)
+        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: bucket))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://\(label).oss-cn-hangzhou.aliyuncs.com/"), uri)
+    }
+
+    func testAliasHostLabelTooLongThrows() async throws {
+        // bucket 50 -> label 64, exceeds the 63-char DNS label limit.
+        let bucket = String(repeating: "a", count: 50)
+        let mock = AgenticMock()
+        let client = makeAliasClient(mock)
+        let error = await captureError(try await client.getAgenticBucket(GetAgenticBucketRequest(bucket: bucket)))
+        XCTAssertEqual((error as? ClientError)?.code, "ValidationError")
+        XCTAssertTrue(((error as? ClientError)?.message ?? "")
+            .contains("exceeds the maximum length of 63 characters"),
+            String(describing: error))
+        XCTAssertEqual(mock.requests.count, 0)
     }
 
     // MARK: - Required-field errors

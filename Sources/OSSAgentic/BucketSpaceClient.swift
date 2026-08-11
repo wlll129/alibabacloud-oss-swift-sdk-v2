@@ -14,8 +14,14 @@ public enum BucketSpaceClient {
     }
 }
 
+/// The literal segment that replaces `{accountId}-{region}` in the short host label.
+private let aliasToken = "alias"
+
 /// Builds a `Client` whose requests are rewritten to a physical `{bucket}-{accountId}-{region}{suffix}`
 /// name and routed to the matching virtual-hosted host, without mutating the operation input.
+///
+/// Under ``AddressStyleType/virtualHostedAlias`` the host carries the short label
+/// `{bucket}-alias{suffix}` instead, while signing keeps the physical name.
 func makeScopedClient(
     _ config: Configuration,
     suffix: String,
@@ -53,13 +59,22 @@ func makeScopedClient(
             opts.endpointProvider = { input in
                 var paths: [String] = []
                 var host = authority
-                if input.bucket != nil {
+                if let bucket = input.bucket {
                     switch addressStyle {
                     case .path:
                         paths.append(try buildName(input))
                         if input.key == nil {
                             paths.append("")
                         }
+                    case .virtualHostedAlias:
+                        let label = "\(bucket)-\(aliasToken)\(suffix)"
+                        guard label.count <= 63 else {
+                            throw ClientError(
+                                code: "ValidationError",
+                                message: "the host label \"\(label)\" exceeds the maximum length of 63 characters"
+                            )
+                        }
+                        host = "\(label).\(authority)"
                     default: // virtual host
                         let name = try buildName(input)
                         guard name.count <= 63 else {

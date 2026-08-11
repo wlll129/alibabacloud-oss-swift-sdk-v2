@@ -283,6 +283,16 @@ final class ClientImplTests: XCTestCase {
             addressStyle: .cname
         )
         XCTAssertEqual("oss-cn-hangzhou.aliyuncs.com/special/test-key%2B123", host)
+
+        // virtualHostedAlias is agentic-only, the plain client falls back to virtual-hosted
+        input = OperationInput()
+        input.bucket = "test-bucket"
+        input.key = "test-key"
+        host = input.buildHostPath(
+            host: "oss-cn-hangzhou.aliyuncs.com",
+            addressStyle: .virtualHostedAlias
+        )
+        XCTAssertEqual("test-bucket.oss-cn-hangzhou.aliyuncs.com/test-key", host)
     }
 
     func testQueryString() {
