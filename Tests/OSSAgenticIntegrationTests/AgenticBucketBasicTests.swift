@@ -140,6 +140,8 @@ final class AgenticBucketBasicNegativeTests: AgenticBaseTestCase {
         try await assertThrowsAsyncError(await client.getAgenticBucket(GetAgenticBucketRequest(bucket: bucket))) {
             let serverError = $0 as? ServerError
             XCTAssertEqual(serverError?.statusCode, 404)
+            XCTAssertEqual(serverError?.code, "NoSuchAgenticBucket")
+            XCTAssertFalse(serverError?.ec.isEmpty ?? true)
             XCTAssertFalse(serverError?.requestId.isEmpty ?? true)
         }
     }
