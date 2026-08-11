@@ -44,6 +44,16 @@ final class AgenticBucketClientTests: XCTestCase {
         }
     }
 
+    private func makeAliasConfigClient(_ mock: AgenticMock, accountId: String? = "137", region: String? = "cn-hangzhou") -> AgenticBucketClient {
+        let config = makeConfig(accountId: accountId, region: region).withUseVirtualHostedAlias(true)
+        return AgenticBucketClient(config) { $0.executeMW = mock }
+    }
+
+    private func makeAliasConfigBucketSpaceClient(_ mock: AgenticMock, accountId: String? = "137") -> Client {
+        let config = makeConfig(accountId: accountId).withUseVirtualHostedAlias(true)
+        return BucketSpaceClient.make(config) { $0.executeMW = mock }
+    }
+
     // MARK: - Host routing
 
     func testCreateAgenticBucketHost() async throws {
@@ -212,6 +222,44 @@ final class AgenticBucketClientTests: XCTestCase {
         XCTAssertEqual(mock.requests.count, 1)
         let uri = mock.requests[0].requestUri.absoluteString
         XCTAssertTrue(uri.hasPrefix("https://prefix-alias-bs-apsr.oss-cn-hangzhou.aliyuncs.com/obj"), uri)
+    }
+
+    func testGetAgenticBucketAliasStyleFromConfig() async throws {
+        let mock = AgenticMock()
+        let client = makeAliasConfigClient(mock)
+        _ = try? await client.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix"))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://prefix-alias-ab-apsr.oss-cn-hangzhou.aliyuncs.com/"), uri)
+        XCTAssertTrue(uri.contains("agenticBucket"), uri)
+    }
+
+    func testListAgenticBucketsAliasStyleFromConfigUsesRegionalHost() async throws {
+        let mock = AgenticMock()
+        let client = makeAliasConfigClient(mock)
+        _ = try? await client.listAgenticBuckets(ListAgenticBucketsRequest())
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://oss-cn-hangzhou.aliyuncs.com/"), uri)
+        XCTAssertFalse(uri.contains("alias"), uri)
+    }
+
+    func testBucketSpaceScopedClientAliasStyleFromConfigHost() async throws {
+        let mock = AgenticMock()
+        let scoped = makeAliasConfigBucketSpaceClient(mock)
+        _ = try? await scoped.putObject(PutObjectRequest(bucket: "prefix", key: "obj"))
+        XCTAssertEqual(mock.requests.count, 1)
+        let uri = mock.requests[0].requestUri.absoluteString
+        XCTAssertTrue(uri.hasPrefix("https://prefix-alias-bs-apsr.oss-cn-hangzhou.aliyuncs.com/obj"), uri)
+    }
+
+    func testAliasStyleFromConfigStillRequiresAccountId() async throws {
+        // The config switch only changes the host label, signing keeps the full name.
+        let mock = AgenticMock()
+        let noAccount = makeAliasConfigClient(mock, accountId: "")
+        let error = await captureError(try await noAccount.getAgenticBucket(GetAgenticBucketRequest(bucket: "prefix")))
+        XCTAssertEqual((error as? ClientError)?.code, "ParameterError")
+        XCTAssertEqual(mock.requests.count, 0)
     }
 
     func testAliasStyleStillRequiresAccountId() async throws {

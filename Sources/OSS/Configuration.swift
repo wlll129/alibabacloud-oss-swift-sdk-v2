@@ -54,6 +54,9 @@ public class Configuration {
     /// Request mode using cname. Defaut value is false
     public var useCname: Bool?
 
+    /// If the endpoint is a short-alias host, set this flag to true
+    public var useVirtualHostedAlias: Bool?
+
     /// Authentication with OSS Signature Version, Defaults is "v4"
     public var signerVersion: SignerVersion?
     
@@ -243,6 +246,15 @@ public extension Configuration {
     @discardableResult
     func withUseCname(_ useCname: Bool) -> Self {
         self.useCname = useCname
+        return self
+    }
+
+    /// Set if the endpoint is a short-alias host, set this flag to true
+    /// - Parameter useVirtualHostedAlias: useVirtualHostedAlias
+    /// - Returns: self
+    @discardableResult
+    func withUseVirtualHostedAlias(_ useVirtualHostedAlias: Bool) -> Self {
+        self.useVirtualHostedAlias = useVirtualHostedAlias
         return self
     }
 

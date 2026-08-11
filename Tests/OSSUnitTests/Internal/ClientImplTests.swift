@@ -146,6 +146,12 @@ final class ClientImplTests: XCTestCase {
         client = ClientImpl(config)
         XCTAssertEqual(client.options.addressStyle, .path)
 
+        // virtual-hosted-alias
+        config = Configuration.default()
+            .withUseVirtualHostedAlias(true)
+        client = ClientImpl(config)
+        XCTAssertEqual(client.options.addressStyle, .virtualHostedAlias)
+
         // ip
         config = Configuration.default()
             .withEndpoint("192.169.0.1")

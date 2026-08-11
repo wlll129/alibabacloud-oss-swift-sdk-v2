@@ -245,6 +245,8 @@ class ClientImpl {
             style = .cname
         } else if config.usePathStyle ?? false {
             style = .path
+        } else if config.useVirtualHostedAlias ?? false {
+            style = .virtualHostedAlias
         } else {
             style = .virtualHosted
         }

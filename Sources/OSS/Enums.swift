@@ -27,9 +27,6 @@ public enum AddressStyleType {
     case virtualHosted
     case cname
     case path
-
-    /// Agentic-only, the physical bucket name is replaced by the short alias host label.
-    /// The plain client falls back to ``virtualHosted``.
     case virtualHostedAlias
 }
 
