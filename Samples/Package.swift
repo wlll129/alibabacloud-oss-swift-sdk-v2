@@ -14,7 +14,7 @@ let targets = ["AbortMultipartUpload", "AppendObject",
                "RestoreObject",
                "UploadPart", "UploadPartCopy",
                "Presign",
-               "CreateAgenticBucket", "DeleteAgenticBucket", "GetAgenticBucket", "ListAgenticBuckets", "PutAgenticBucketStatus", "ListBucketSpaces", "BucketSpace"]
+               "CreateAgenticBucket", "DeleteAgenticBucket", "GetAgenticBucket", "ListAgenticBuckets", "PutAgenticBucketStatus", "ListBucketSpaces", "CreateBucketSpace", "BucketSpace"]
 
 let package = Package(
     name: "alibabacloud-oss-samples",
