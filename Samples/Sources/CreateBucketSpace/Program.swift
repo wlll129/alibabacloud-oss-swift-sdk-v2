@@ -46,7 +46,7 @@ struct Main {
                 .withCredentialsProvider(credentialsProvider)
                 .withAccountId(accountId)
             if let useVirtualHostedAlias {
-                .withUseVirtualHostedAlias(useVirtualHostedAlias)
+                config.withUseVirtualHostedAlias(useVirtualHostedAlias)
             }
             if let endpoint = endpoint {
                 config.withEndpoint(endpoint)

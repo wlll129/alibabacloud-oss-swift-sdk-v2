@@ -44,7 +44,7 @@ struct Main {
                 .withAccountId(accountId)
                 .withLogger(LogAgentNSLog(level: .debug))
             if let useVirtualHostedAlias {
-                .withUseVirtualHostedAlias(useVirtualHostedAlias)
+                config.withUseVirtualHostedAlias(useVirtualHostedAlias)
             }
             if let endpoint = endpoint {
                 config.withEndpoint(endpoint)
