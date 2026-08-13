@@ -17,7 +17,7 @@ struct Program: ParsableCommand {
     var bucket: String
     
     @Option(help: "Set if the endpoint is a short-alias host, set this flag to true.")
-    var useVirtualHostedAlias: Bool
+    var useVirtualHostedAlias: Bool?
 }
 
 @main
@@ -42,9 +42,10 @@ struct Main {
                 .withRegion(region)
                 .withCredentialsProvider(credentialsProvider)
                 .withAccountId(accountId)
-                .withUseVirtualHostedAlias(useVirtualHostedAlias)
                 .withLogger(LogAgentNSLog(level: .debug))
-
+            if let useVirtualHostedAlias {
+                .withUseVirtualHostedAlias(useVirtualHostedAlias)
+            }
             if let endpoint = endpoint {
                 config.withEndpoint(endpoint)
             }
