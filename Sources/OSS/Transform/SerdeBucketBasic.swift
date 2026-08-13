@@ -64,17 +64,21 @@ extension Serde {
             input.headers["x-oss-agentic-bucket"] = value
         }
 
-        var xmlBody = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-        xmlBody.append("<CreateBucketConfiguration>")
-        if let storageClass = request.createBucketConfiguration?.storageClass {
-            xmlBody.append("<StorageClass>\(storageClass)</StorageClass>")
-        }
-        if let dataRedundancyType = request.createBucketConfiguration?.dataRedundancyType {
-            xmlBody.append("<DataRedundancyType>\(dataRedundancyType)</DataRedundancyType>")
-        }
-        xmlBody.append("</CreateBucketConfiguration>")
+        // Omit the body when no configuration is provided: agentic bucket space
+        // creation rejects a request that carries one.
+        if let configuration = request.createBucketConfiguration {
+            var xmlBody = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            xmlBody.append("<CreateBucketConfiguration>")
+            if let storageClass = configuration.storageClass {
+                xmlBody.append("<StorageClass>\(storageClass)</StorageClass>")
+            }
+            if let dataRedundancyType = configuration.dataRedundancyType {
+                xmlBody.append("<DataRedundancyType>\(dataRedundancyType)</DataRedundancyType>")
+            }
+            xmlBody.append("</CreateBucketConfiguration>")
 
-        input.body = .data(xmlBody.data(using: .utf8)!)
+            input.body = .data(xmlBody.data(using: .utf8)!)
+        }
     }
 
     static func deserializePutBucket(

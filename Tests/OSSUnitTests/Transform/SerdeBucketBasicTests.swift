@@ -104,8 +104,7 @@ class SerdeBucketBasicTests: XCTestCase {
         XCTAssertNil(input.headers["x-oss-resource-group-id"])
         XCTAssertNil(input.headers["x-oss-bucket-tagging"])
         XCTAssertNil(input.headers["x-oss-agentic-bucket"])
-        XCTAssertEqual(try input.body?.readData()?.base64EncodedString(),
-                       "<?xml version=\"1.0\" encoding=\"UTF-8\"?><CreateBucketConfiguration></CreateBucketConfiguration>".data(using: .utf8)?.base64EncodedString())
+        XCTAssertNil(input.body)
 
         let agenticBucket = "my-agentic-bucket"
 
