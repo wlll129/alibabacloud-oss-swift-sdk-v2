@@ -15,6 +15,9 @@ struct Program: ParsableCommand {
 
     @Option(help: "The user-defined prefix of the AgenticBucket name.")
     var bucket: String
+    
+    @Option(help: "Set if the endpoint is a short-alias host, set this flag to true.")
+    var useVirtualHostedAlias: Bool
 }
 
 @main
@@ -29,6 +32,7 @@ struct Main {
             let bucket = opts.bucket
             let endpoint = opts.endpoint
             let accountId = opts.accountId
+            let useVirtualHostedAlias = opts.useVirtualHostedAlias
 
             // Using the SDK's default configuration
             // loading credentials values from the environment variables
@@ -38,6 +42,8 @@ struct Main {
                 .withRegion(region)
                 .withCredentialsProvider(credentialsProvider)
                 .withAccountId(accountId)
+                .withUseVirtualHostedAlias(useVirtualHostedAlias)
+                .withLogger(LogAgentOSLog(level: .debug))
 
             if let endpoint = endpoint {
                 config.withEndpoint(endpoint)
