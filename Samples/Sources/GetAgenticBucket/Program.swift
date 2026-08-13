@@ -43,7 +43,7 @@ struct Main {
                 .withCredentialsProvider(credentialsProvider)
                 .withAccountId(accountId)
                 .withUseVirtualHostedAlias(useVirtualHostedAlias)
-                .withLogger(LogAgentOSLog(level: .debug))
+                .withLogger(LogAgentNSLog(level: .debug))
 
             if let endpoint = endpoint {
                 config.withEndpoint(endpoint)
